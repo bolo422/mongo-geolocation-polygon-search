@@ -40,62 +40,29 @@
 <script>
     let map;
     let drawnPolygons = [];
-    let storeMarkers = []; // To keep track of store markers
+    let storeMarkers = [];
+    let distanceLines = [];
+    let distanceLabels = [];
+
+    const storeIcon = L.icon({
+        iconUrl: '/images/store-marker.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
+    });
 
     function initMap() {
-        map = L.map('map').setView([-30.110682, -51.131744], 10);
+        map = L.map('map').setView([-30.110682, -51.131744], 12);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
         map.on('click', (event) => sendPoint(event.latlng));
-
-        // Fetch and display stores
-        fetchStores();
-    }
-
-    function fetchStores() {
-        fetch('/store/allStores', {
-            method: 'GET'
-        })
-            .then(response => response.json())
-            .then(data => {
-                drawStores(data);
-            })
-            .catch(error => console.error('Erro ao buscar lojas:', error));
-    }
-
-    function drawStores(stores) {
-        // Define the custom icon for store markers
-        const storeIcon = L.icon({
-            iconUrl: '/images/store-marker.png', // Path to your custom icon
-            iconSize: [32, 32], // Adjust size as needed
-            iconAnchor: [16, 32], // Anchor point (bottom-center)
-            popupAnchor: [0, -32] // Popup offset
-        });
-
-        stores.forEach(store => {
-            const lat = store.geometry.coordinates[1];
-            const lng = store.geometry.coordinates[0];
-
-            const marker = L.marker([lat, lng], { icon: storeIcon }) // Use the custom icon
-                .addTo(map)
-                .bindPopup(`<b>${store.friendlyName}</b>`);
-
-            storeMarkers.push(marker);
-        });
-
-        // Adjust map view to include all store markers
-        if (storeMarkers.length > 0) {
-            const group = new L.featureGroup(storeMarkers);
-            map.fitBounds(group.getBounds());
-        }
     }
 
     function sendPoint(location) {
-        // Remove existing polygons
-        clearPolygons();
+        clearMapElements();
 
         const coordinates = {
             lat: location.lat,
@@ -107,10 +74,76 @@
         })
             .then(response => response.json())
             .then(data => {
-                displayMessage("Polígonos encontrados:");
-                drawPolygons(data.polygons);
+                displayMessage("Polígonos, lojas e distâncias encontrados:");
+                drawPolygonsAndStores(data.polygons, coordinates);
             })
-            .catch(error => console.error('Erro:', error));
+            .catch(error => {
+                console.error('Erro ao buscar dados:', error);
+                displayMessage("Erro ao buscar os dados.");
+            });
+    }
+
+    function drawPolygonsAndStores(polygons, clickedLocation) {
+        polygons.forEach(polygon => {
+            const latlngs = polygon.coordinates.map(coord => [coord.lat, coord.lng]);
+            const polygonColor = getRandomColor();
+
+            const poly = L.polygon(latlngs, { color: polygonColor }).addTo(map);
+            poly.bindPopup(`<b>${polygon.name}</b>`);
+            drawnPolygons.push(poly);
+
+            if (polygon.storeCoordinates) {
+                const { lat, lng } = polygon.storeCoordinates;
+                const storeMarker = L.marker([lat, lng], { icon: storeIcon })
+                    .addTo(map)
+                    .bindPopup(`<b>Loja do Polígono: ${polygon.name}</b>`);
+
+                storeMarkers.push(storeMarker);
+
+                // Draw line and add distance
+                const distance = polygon.distance; // Use the distance from the response
+                drawLineAndDistance(clickedLocation, { lat, lng }, distance);
+            }
+        });
+    }
+
+    function drawLineAndDistance(start, end, distance) {
+        // Draw the line
+        const line = L.polyline([start, end], { color: 'blue', weight: 2 }).addTo(map);
+        distanceLines.push(line);
+
+        // Calculate the midpoint of the line
+        const midLat = (start.lat + end.lat) / 2;
+        const midLng = (start.lng + end.lng) / 2;
+
+        // Add distance label
+        const distanceLabelMarker = L.marker([midLat, midLng], {
+            icon: L.divIcon({
+                className: 'distance-label',
+                html: `<div style="background: white; padding: 2px 5px; border: 1px solid black; border-radius: 3px;">${distance.toFixed(2)} km</div>`,
+                iconSize: [50, 20]
+            })
+        }).addTo(map);
+
+        distanceLabels.push(distanceLabelMarker);
+    }
+
+    function clearMapElements() {
+        // Remove all polygons
+        drawnPolygons.forEach(polygon => map.removeLayer(polygon));
+        drawnPolygons = [];
+
+        // Remove all markers
+        storeMarkers.forEach(marker => map.removeLayer(marker));
+        storeMarkers = [];
+
+        // Remove all distance lines
+        distanceLines.forEach(line => map.removeLayer(line));
+        distanceLines = [];
+
+        // delete all distance labels
+        distanceLabels.forEach(labelMarker => map.removeLayer(labelMarker));
+        distanceLabels = [];
     }
 
     function displayMessage(message) {
@@ -118,43 +151,13 @@
         messageDiv.textContent = message;
     }
 
-    function drawPolygons(polygons) {
-        polygons.forEach(polygon => {
-            const latlngs = polygon.coordinates.map(coord => [coord.lat, coord.lng]);
-
-            // Generate a random color for the polygon
-            const polygonColor = getRandomColor();
-
-            const poly = L.polygon(latlngs, { color: polygonColor }).addTo(map);
-            poly.bindPopup(`<b>${polygon.name}</b>`);
-
-            // Add the polygon to the list to remove it later
-            drawnPolygons.push(poly);
-
-            // Zoom and center map around the drawn polygon
-            map.fitBounds(poly.getBounds());
-        });
-    }
-
-    function clearPolygons() {
-        // Remove all drawn polygons
-        drawnPolygons.forEach(polygon => {
-            map.removeLayer(polygon);
-        });
-        drawnPolygons = [];
-    }
-
     function getRandomColor() {
         let r, g, b;
-
-        // Ensure the color isn't too light
         do {
             r = Math.floor(Math.random() * 256);
             g = Math.floor(Math.random() * 256);
             b = Math.floor(Math.random() * 256);
-        } while ((r + g + b) / 3 > 127); // Average color to avoid light colors
-
-        // Convert RGB to hexadecimal
+        } while ((r + g + b) / 3 > 127);
         return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
     }
 

@@ -44,7 +44,7 @@
     let map, markers = [], polyline, storeMarkers = [];
 
     function initMap() {
-        map = L.map('map').setView([-30.110682, -51.131744], 10);
+        map = L.map('map').setView([-30.110682, -51.131744], 12);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -124,12 +124,6 @@
 
             storeMarkers.push(marker);
         });
-
-        // Adjust map view to include all store markers
-        if (storeMarkers.length > 0) {
-            const group = new L.featureGroup(storeMarkers);
-            map.fitBounds(group.getBounds());
-        }
     }
 
     window.onload = initMap;

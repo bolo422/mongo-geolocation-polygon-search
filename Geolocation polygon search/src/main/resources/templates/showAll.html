@@ -42,23 +42,11 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    // Keep track of store markers for later reference
-    let storeMarkers = [];
+    let map;
+    let drawnPolygons = [];
+    const storeMarkers = [];
 
-    // Fetch and display stores on the map
-    function fetchAndDisplayStores() {
-        fetch('/store/allStores', {
-            method: 'GET'
-        })
-            .then(response => response.json())
-            .then(stores => {
-                displayMessage("Lojas carregadas no mapa.");
-                drawStores(stores);
-            })
-            .catch(error => console.error('Erro ao carregar lojas:', error));
-    }
-
-    // Define the custom icon
+    // Define the custom icon for stores
     const storeIcon = L.icon({
         iconUrl: '/images/store-marker.png', // Replace with your image path
         iconSize: [32, 32], // Size of the icon [width, height]
@@ -66,86 +54,80 @@
         popupAnchor: [0, -32] // Point from which the popup should open relative to the iconAnchor
     });
 
-    // Draw store markers on the map
-    function drawStores(stores) {
-        stores.forEach(store => {
-            const lat = store.geometry.coordinates[1];
-            const lng = store.geometry.coordinates[0];
-
-            const marker = L.marker([lat, lng], {icon: storeIcon}) // Assign the custom icon here
-                .addTo(map)
-                .bindPopup(`<b>${store.friendlyName}</b>`);
-
-            // Add the marker to the list of store markers
-            storeMarkers.push(marker);
-        });
-
-        // Optionally, fit the map to show all store markers
-        if (storeMarkers.length > 0) {
-            const group = new L.featureGroup(storeMarkers);
-            map.fitBounds(group.getBounds());
-        }
-    }
-
-    let map;
-    let drawnPolygons = [];
-
+    // Initialize the map
     function initMap() {
-        map = L.map('map').setView([0, 0], 2);
+        map = L.map('map').setView([-30.110682, -51.131744], 12);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        fetch('/findAll', {
-            method: 'GET'
-        })
+        fetchPolygons();
+    }
+
+    // Fetch polygons and stores
+    function fetchPolygons() {
+        fetch('/findAll', {method: 'GET'})
             .then(response => response.json())
             .then(data => {
-                displayMessage("Polígonos cadastrados:");
-                drawPolygons(data.polygons);
+                displayMessage("Polígonos e lojas carregados com sucesso.");
+                drawPolygonsAndStores(data.polygons);
             })
-            .catch(error => console.error('Erro:', error));
-
-        // Fetch and display stores
-        fetchAndDisplayStores();
+            .catch(error => {
+                console.error('Erro ao carregar polígonos e lojas:', error);
+                displayMessage("Erro ao carregar os dados.");
+            });
     }
 
-    function displayMessage(message) {
-        const messageDiv = document.getElementById('response-message');
-        messageDiv.textContent = message;
-    }
-
-    function drawPolygons(polygons) {
+    // Draw polygons and their associated stores
+    function drawPolygonsAndStores(polygons) {
         polygons.forEach(polygon => {
+            // Draw polygon
             const latlngs = polygon.coordinates.map(coord => [coord.lat, coord.lng]);
-
-            // Gera uma cor aleatória para o polígono
             const polygonColor = getRandomColor();
 
             const poly = L.polygon(latlngs, {color: polygonColor}).addTo(map);
             poly.bindPopup(`<b>${polygon.name}</b>`);
 
-            // Adiciona o polígono à lista para poder removê-lo depois
+            // Add polygon to drawnPolygons list
             drawnPolygons.push(poly);
 
-            // Zoom and center map around the drawn polygon
-            map.fitBounds(poly.getBounds());
+            // Draw store marker
+            if (polygon.storeCoordinates) {
+                console.log(polygon.storeCoordinates);
+                const lat = polygon.storeCoordinates.lat;
+                const lng = polygon.storeCoordinates.lng;
+
+                const storeMarker = L.marker([lat, lng], {icon: storeIcon})
+                    .addTo(map)
+                    .bindPopup(`<b>Loja do Polígono: ${polygon.name}</b>`);
+
+                storeMarkers.push(storeMarker);
+            }
+            else {
+                console.log('No store coordinates found for polygon:', polygon.name);
+            }
         });
     }
 
+    // Generate a random color
     function getRandomColor() {
         let r, g, b;
 
-        // Garante que a cor não seja muito clara
+        // Ensure the color is not too light
         do {
             r = Math.floor(Math.random() * 256);
             g = Math.floor(Math.random() * 256);
             b = Math.floor(Math.random() * 256);
-        } while ((r + g + b) / 3 > 127); // Média de cor para evitar cores muito claras
+        } while ((r + g + b) / 3 > 127);
 
-        // Converte RGB para hexadecimal
         return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
+    }
+
+    // Display a message
+    function displayMessage(message) {
+        const messageDiv = document.getElementById('response-message');
+        messageDiv.textContent = message;
     }
 
     window.onload = initMap;

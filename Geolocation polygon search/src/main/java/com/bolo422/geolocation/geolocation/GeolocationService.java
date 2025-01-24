@@ -4,8 +4,10 @@ import com.bolo422.geolocation.geolocation.mapper.PolygonResponseMapper;
 import com.bolo422.geolocation.geolocation.model.Coordinate;
 import com.bolo422.geolocation.geolocation.model.PolygonEntity;
 import com.bolo422.geolocation.geolocation.model.PolygonResponseWrapper;
+import com.bolo422.geolocation.geolocation.utils.CoordinateUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.geo.Point;
+import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +19,7 @@ public class GeolocationService {
 
     /**
      * Salva um polígono no banco de dados
+     *
      * @param coordinates
      * @return mensagem de sucesso
      */
@@ -30,7 +33,11 @@ public class GeolocationService {
                 .map(coordinate -> new Point(coordinate.lng(), coordinate.lat()))
                 .toList();
 
-        final var polygonEntity = new PolygonEntity(polygonCoordinates);
+        // Para não ser necessário informar a coordenada da loja, ela é calculada a partir das coordenadas do polígono
+        // Este comportamento é só para testes
+        final var storeCoordinates = CoordinateUtils.calculateCenter(coordinates);
+
+        final var polygonEntity = new PolygonEntity(polygonCoordinates, storeCoordinates);
 
         polygonRepository.save(polygonEntity);
 
@@ -39,6 +46,7 @@ public class GeolocationService {
 
     /**
      * Encontra um polígono que intersecta com o ponto informado
+     *
      * @param lat
      * @param lng
      * @return PolygonResponseWrapper
@@ -46,11 +54,12 @@ public class GeolocationService {
      */
     public PolygonResponseWrapper findPolygonByPoint(double lat, double lng) {
         final var polygons = polygonRepository.findPolygonsByPoint(lng, lat);
-        return PolygonResponseMapper.mapFrom(polygons);
+        return PolygonResponseMapper.mapFrom(polygons, lat, lng);
     }
 
     /**
      * Encontra todos os polígonos salvos no banco de dados
+     *
      * @return PolygonResponseWrapper
      * @see PolygonResponseWrapper
      */

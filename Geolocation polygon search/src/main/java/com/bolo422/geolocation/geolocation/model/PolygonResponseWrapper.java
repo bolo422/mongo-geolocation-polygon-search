@@ -11,7 +11,9 @@ public record PolygonResponseWrapper(
     @Builder
     public record PolygonResponse(
             String name,
-            List<Coordinate> coordinates
+            List<Coordinate> coordinates,
+            Coordinate storeCoordinates,
+            double distance
     ) {
     }
 }

@@ -2,6 +2,7 @@ package com.bolo422.geolocation.geolocation.model;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.geo.Point;
+import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 import org.springframework.data.mongodb.core.geo.GeoJsonPolygon;
 import org.springframework.data.mongodb.core.index.GeoSpatialIndexType;
 import org.springframework.data.mongodb.core.index.GeoSpatialIndexed;
@@ -17,13 +18,16 @@ public record PolygonEntity(
         String id,
         String name,
         @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE)
-        GeoJsonPolygon geometry
+        GeoJsonPolygon geometry,
+        @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE)
+        GeoJsonPoint storeCoordinates
 ) {
-    public PolygonEntity(List<Point> coordinates) {
+    public PolygonEntity(List<Point> coordinates, Coordinate storeCoordinates) {
         this(
                 null,
-                "Polygon | " + LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))
-                , new GeoJsonPolygon(coordinates)
+                "Polygon | " + LocalDateTime.now(ZoneId.of("America/Sao_Paulo")),
+                new GeoJsonPolygon(coordinates),
+                new GeoJsonPoint(storeCoordinates.lng(), storeCoordinates.lat())
         );
     }
 }
