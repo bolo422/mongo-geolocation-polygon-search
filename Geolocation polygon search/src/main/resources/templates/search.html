@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <title>Encontrar Ponto</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 90vh;
+            width: 100%;
+        }
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f4f4f4;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        #header button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+        }
+        #header button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+<div id="header">
+    <button onclick="location.href='/'">Voltar à Página Inicial</button>
+    <h1>Encontrar Ponto</h1>
+</div>
+<div id="map"></div>
+<div id="response-message" style="padding: 10px; margin-top: 10px; background: #f4f4f4; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    let map;
+    let drawnPolygons = [];
+
+    function initMap() {
+        map = L.map('map').setView([-30.110682, -51.131744], 10);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        map.on('click', (event) => sendPoint(event.latlng));
+    }
+
+    function sendPoint(location) {
+        // Remove existing polygons
+        clearPolygons();
+
+        const coordinates = {
+            lat: location.lat,
+            lng: location.lng
+        };
+
+        fetch(`/find?lat=${coordinates.lat}&lng=${coordinates.lng}`, {
+            method: 'GET'
+        })
+            .then(response => response.json())
+            .then(data => {
+                displayMessage("Polígonos encontrados:");
+                drawPolygons(data.polygons);
+            })
+            .catch(error => console.error('Erro:', error));
+    }
+
+    function displayMessage(message) {
+        const messageDiv = document.getElementById('response-message');
+        messageDiv.textContent = message;
+    }
+
+    function drawPolygons(polygons) {
+        polygons.forEach(polygon => {
+            const latlngs = polygon.coordinates.map(coord => [coord.lat, coord.lng]);
+
+            // Gera uma cor aleatória para o polígono
+            const polygonColor = getRandomColor();
+
+            const poly = L.polygon(latlngs, { color: polygonColor }).addTo(map);
+            poly.bindPopup(`<b>${polygon.name}</b>`);
+
+            // Adiciona o polígono à lista para poder removê-lo depois
+            drawnPolygons.push(poly);
+
+            // Zoom and center map around the drawn polygon
+            map.fitBounds(poly.getBounds());
+        });
+    }
+
+    function clearPolygons() {
+        // Remove todos os polígonos desenhados
+        drawnPolygons.forEach(polygon => {
+            map.removeLayer(polygon);
+        });
+        drawnPolygons = [];
+    }
+
+    function getRandomColor() {
+        let r, g, b;
+
+        // Garante que a cor não seja muito clara
+        do {
+            r = Math.floor(Math.random() * 256);
+            g = Math.floor(Math.random() * 256);
+            b = Math.floor(Math.random() * 256);
+        } while ((r + g + b) / 3 > 127); // Média de cor para evitar cores muito claras
+
+        // Converte RGB para hexadecimal
+        const corHex = `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
+
+        return corHex;
+    }
+
+    window.onload = initMap;
+</script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <title>Cadastrar Polígonos</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 90vh;
+            width: 100%;
+        }
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f4f4f4;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        #header button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+        }
+        #header button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+<div id="header">
+    <button onclick="location.href='/'">Voltar à Página Inicial</button>
+    <h1>Cadastrar Polígonos</h1>
+    <button id="submit-btn">Enviar Coordenadas</button>
+</div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    let map, markers = [], polyline;
+
+    function initMap() {
+        map = L.map('map').setView([-30.110682, -51.131744], 10);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        map.on('click', (event) => addMarker(event.latlng));
+
+        polyline = L.polyline([], { color: 'red' }).addTo(map);
+
+        document.getElementById('submit-btn').addEventListener('click', sendCoordinates);
+    }
+
+    function addMarker(location) {
+        const marker = L.marker(location).addTo(map);
+        markers.push(marker);
+        polyline.setLatLngs(markers.map(m => m.getLatLng()));
+    }
+
+    function sendCoordinates() {
+        const coordinates = markers.map(marker => ({
+            lat: marker.getLatLng().lat,
+            lng: marker.getLatLng().lng
+        }));
+
+        fetch('/saveCoordinates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(coordinates)
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert('Coordenadas enviadas com sucesso!');
+                    clearMap();
+                } else {
+                    alert('Falha ao enviar coordenadas.');
+                }
+            })
+            .catch(error => console.error('Erro:', error));
+    }
+
+    function clearMap() {
+        markers.forEach(marker => map.removeLayer(marker));
+        markers = [];
+        polyline.setLatLngs([]);
+    }
+
+    window.onload = initMap;
+</script>
+</body>
+</html>

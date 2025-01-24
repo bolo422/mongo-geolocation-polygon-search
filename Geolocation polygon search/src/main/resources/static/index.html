@@ -1,95 +1,44 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt">
 <head>
-    <title>OpenStreetMap Coordinate Selector</title>
+    <title>Página Inicial</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-        #map {
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             height: 100vh;
-            width: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
         }
-        #submit-btn {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 1000;
+        h1 {
+            margin-bottom: 20px;
+        }
+        .btn-container {
+            display: flex;
+            gap: 20px;
+        }
+        .btn {
             background: #4CAF50;
             color: white;
             border: none;
-            padding: 10px;
+            padding: 10px 20px;
             cursor: pointer;
+            font-size: 16px;
         }
-        #submit-btn:hover {
+        .btn:hover {
             background: #45a049;
         }
     </style>
 </head>
 <body>
-<button id="submit-btn">Send Coordinates</button>
-<div id="map"></div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-    let map;
-    let markers = [];
-    let polyline;
-
-    // Inicializa o mapa
-    function initMap() {
-        map = L.map('map').setView([0, 0], 2); // Centraliza o mapa
-
-        // Carrega o mapa do OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-        // Adiciona evento de clique no mapa para adicionar marcadores
-        map.on('click', (event) => {
-            addMarker(event.latlng);
-        });
-
-        polyline = L.polyline([], { color: 'red' }).addTo(map); // Linha para conectar os pontos
-        document.getElementById('submit-btn').addEventListener('click', sendCoordinates);
-    }
-
-    // Adiciona marcador e atualiza a linha
-    function addMarker(location) {
-        const marker = L.marker(location).addTo(map);
-        markers.push(marker);
-        updatePolyline();
-    }
-
-    // Atualiza a linha conectando os marcadores
-    function updatePolyline() {
-        const latlngs = markers.map(marker => marker.getLatLng());
-        polyline.setLatLngs(latlngs);
-    }
-
-    // Envia as coordenadas para o backend
-    function sendCoordinates() {
-        const coordinates = markers.map(marker => ({
-            lat: marker.getLatLng().lat,
-            lng: marker.getLatLng().lng
-        }));
-
-        // Envia as coordenadas para o backend via fetch
-        fetch('/saveCoordinates', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(coordinates)
-        })
-            .then(response => {
-                if (response.ok) {
-                    alert('Coordinates sent successfully!');
-                } else {
-                    alert('Failed to send coordinates.');
-                }
-            })
-            .catch(error => console.error('Error:', error));
-    }
-
-    // Inicializa o mapa quando a página carrega
-    window.onload = initMap;
-</script>
+<h1>Bem-vindo ao Gerenciador de Polígonos</h1>
+<div class="btn-container">
+    <button class="btn" onclick="location.href='/add'">Cadastrar polígonos</button>
+    <button class="btn" onclick="location.href='/search'">Consultar coordenada</button>
+    <button class="btn" onclick="location.href='/showAll'">Visualizar todos os polígonos</button>
+</div>
 </body>
 </html>
