@@ -20,7 +20,7 @@ public class GeolocationService {
     /**
      * Salva um polígono no banco de dados
      *
-     * @param coordinates
+     * @param coordinates lista de coordenadas do polígono
      * @return mensagem de sucesso
      */
     public String savePolygon(List<Coordinate> coordinates) {
@@ -47,8 +47,8 @@ public class GeolocationService {
     /**
      * Encontra um polígono que intersecta com o ponto informado
      *
-     * @param lat
-     * @param lng
+     * @param lat latitude
+     * @param lng longitude
      * @return PolygonResponseWrapper
      * @see PolygonResponseWrapper
      */
