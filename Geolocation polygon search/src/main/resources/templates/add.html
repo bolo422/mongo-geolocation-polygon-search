@@ -2,12 +2,13 @@
 <html lang="pt">
 <head>
     <title>Cadastrar Polígonos</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
         #map {
             height: 90vh;
             width: 100%;
         }
+
         #header {
             display: flex;
             justify-content: space-between;
@@ -16,6 +17,7 @@
             background: #f4f4f4;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+
         #header button {
             background: #4CAF50;
             color: white;
@@ -23,6 +25,7 @@
             padding: 10px;
             cursor: pointer;
         }
+
         #header button:hover {
             background: #45a049;
         }
@@ -38,7 +41,7 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    let map, markers = [], polyline;
+    let map, markers = [], polyline, storeMarkers = [];
 
     function initMap() {
         map = L.map('map').setView([-30.110682, -51.131744], 10);
@@ -49,9 +52,12 @@
 
         map.on('click', (event) => addMarker(event.latlng));
 
-        polyline = L.polyline([], { color: 'red' }).addTo(map);
+        polyline = L.polyline([], {color: 'red'}).addTo(map);
 
         document.getElementById('submit-btn').addEventListener('click', sendCoordinates);
+
+        // Fetch and display stores on map
+        fetchAndDisplayStores();
     }
 
     function addMarker(location) {
@@ -68,7 +74,7 @@
 
         fetch('/saveCoordinates', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(coordinates)
         })
             .then(response => {
@@ -86,6 +92,44 @@
         markers.forEach(marker => map.removeLayer(marker));
         markers = [];
         polyline.setLatLngs([]);
+    }
+
+    // Fetch and display stores
+    function fetchAndDisplayStores() {
+        fetch('/store/allStores', {
+            method: 'GET'
+        })
+            .then(response => response.json())
+            .then(stores => drawStores(stores))
+            .catch(error => console.error('Erro ao carregar lojas:', error));
+    }
+
+    // Draw stores on the map
+    function drawStores(stores) {
+        // Define the custom icon
+        const storeIcon = L.icon({
+            iconUrl: '/images/store-marker.png', // Replace with your image path
+            iconSize: [32, 32], // Size of the icon [width, height]
+            iconAnchor: [16, 32], // Point of the icon which corresponds to the marker's location [x, y]
+            popupAnchor: [0, -32] // Point from which the popup should open relative to the iconAnchor
+        });
+
+        stores.forEach(store => {
+            const lat = store.geometry.coordinates[1];
+            const lng = store.geometry.coordinates[0];
+
+            const marker = L.marker([lat, lng], {icon: storeIcon}) // Assign the custom icon here
+                .addTo(map)
+                .bindPopup(`<b>${store.friendlyName}</b>`);
+
+            storeMarkers.push(marker);
+        });
+
+        // Adjust map view to include all store markers
+        if (storeMarkers.length > 0) {
+            const group = new L.featureGroup(storeMarkers);
+            map.fitBounds(group.getBounds());
+        }
     }
 
     window.onload = initMap;

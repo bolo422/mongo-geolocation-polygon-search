@@ -3,6 +3,8 @@ package com.bolo422.geolocation.geolocation.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.geo.Point;
 import org.springframework.data.mongodb.core.geo.GeoJsonPolygon;
+import org.springframework.data.mongodb.core.index.GeoSpatialIndexType;
+import org.springframework.data.mongodb.core.index.GeoSpatialIndexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -14,6 +16,7 @@ public record PolygonEntity(
         @Id
         String id,
         String name,
+        @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE)
         GeoJsonPolygon geometry
 ) {
     public PolygonEntity(List<Point> coordinates) {

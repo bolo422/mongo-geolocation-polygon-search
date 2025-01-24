@@ -9,5 +9,4 @@ public class GeolocationPolygonSearchApplication {
     public static void main(String[] args) {
         SpringApplication.run(GeolocationPolygonSearchApplication.class, args);
     }
-
 }

@@ -40,6 +40,7 @@
 <script>
     let map;
     let drawnPolygons = [];
+    let storeMarkers = []; // To keep track of store markers
 
     function initMap() {
         map = L.map('map').setView([-30.110682, -51.131744], 10);
@@ -49,6 +50,47 @@
         }).addTo(map);
 
         map.on('click', (event) => sendPoint(event.latlng));
+
+        // Fetch and display stores
+        fetchStores();
+    }
+
+    function fetchStores() {
+        fetch('/store/allStores', {
+            method: 'GET'
+        })
+            .then(response => response.json())
+            .then(data => {
+                drawStores(data);
+            })
+            .catch(error => console.error('Erro ao buscar lojas:', error));
+    }
+
+    function drawStores(stores) {
+        // Define the custom icon for store markers
+        const storeIcon = L.icon({
+            iconUrl: '/images/store-marker.png', // Path to your custom icon
+            iconSize: [32, 32], // Adjust size as needed
+            iconAnchor: [16, 32], // Anchor point (bottom-center)
+            popupAnchor: [0, -32] // Popup offset
+        });
+
+        stores.forEach(store => {
+            const lat = store.geometry.coordinates[1];
+            const lng = store.geometry.coordinates[0];
+
+            const marker = L.marker([lat, lng], { icon: storeIcon }) // Use the custom icon
+                .addTo(map)
+                .bindPopup(`<b>${store.friendlyName}</b>`);
+
+            storeMarkers.push(marker);
+        });
+
+        // Adjust map view to include all store markers
+        if (storeMarkers.length > 0) {
+            const group = new L.featureGroup(storeMarkers);
+            map.fitBounds(group.getBounds());
+        }
     }
 
     function sendPoint(location) {
@@ -80,13 +122,13 @@
         polygons.forEach(polygon => {
             const latlngs = polygon.coordinates.map(coord => [coord.lat, coord.lng]);
 
-            // Gera uma cor aleatória para o polígono
+            // Generate a random color for the polygon
             const polygonColor = getRandomColor();
 
             const poly = L.polygon(latlngs, { color: polygonColor }).addTo(map);
             poly.bindPopup(`<b>${polygon.name}</b>`);
 
-            // Adiciona o polígono à lista para poder removê-lo depois
+            // Add the polygon to the list to remove it later
             drawnPolygons.push(poly);
 
             // Zoom and center map around the drawn polygon
@@ -95,7 +137,7 @@
     }
 
     function clearPolygons() {
-        // Remove todos os polígonos desenhados
+        // Remove all drawn polygons
         drawnPolygons.forEach(polygon => {
             map.removeLayer(polygon);
         });
@@ -105,17 +147,15 @@
     function getRandomColor() {
         let r, g, b;
 
-        // Garante que a cor não seja muito clara
+        // Ensure the color isn't too light
         do {
             r = Math.floor(Math.random() * 256);
             g = Math.floor(Math.random() * 256);
             b = Math.floor(Math.random() * 256);
-        } while ((r + g + b) / 3 > 127); // Média de cor para evitar cores muito claras
+        } while ((r + g + b) / 3 > 127); // Average color to avoid light colors
 
-        // Converte RGB para hexadecimal
-        const corHex = `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
-
-        return corHex;
+        // Convert RGB to hexadecimal
+        return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
     }
 
     window.onload = initMap;
