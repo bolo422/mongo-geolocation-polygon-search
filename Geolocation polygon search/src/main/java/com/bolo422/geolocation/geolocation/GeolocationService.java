@@ -7,7 +7,6 @@ import com.bolo422.geolocation.geolocation.model.PolygonResponseWrapper;
 import com.bolo422.geolocation.geolocation.utils.CoordinateUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.geo.Point;
-import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
