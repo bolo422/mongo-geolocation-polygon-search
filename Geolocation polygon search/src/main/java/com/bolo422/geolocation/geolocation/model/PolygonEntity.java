@@ -1,5 +1,6 @@
 package com.bolo422.geolocation.geolocation.model;
 
+import lombok.Builder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.geo.Point;
 import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
@@ -13,6 +14,7 @@ import java.time.ZoneId;
 import java.util.List;
 
 @Document(collection = "polygons")
+@Builder
 public record PolygonEntity(
         @Id
         String id,
@@ -22,12 +24,4 @@ public record PolygonEntity(
         @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE)
         GeoJsonPoint storeCoordinates
 ) {
-    public PolygonEntity(List<Point> coordinates, Coordinate storeCoordinates) {
-        this(
-                null,
-                "Polygon | " + LocalDateTime.now(ZoneId.of("America/Sao_Paulo")),
-                new GeoJsonPolygon(coordinates),
-                new GeoJsonPoint(storeCoordinates.lng(), storeCoordinates.lat())
-        );
-    }
 }

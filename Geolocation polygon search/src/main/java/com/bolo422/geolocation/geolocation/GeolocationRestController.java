@@ -2,6 +2,7 @@ package com.bolo422.geolocation.geolocation;
 
 import com.bolo422.geolocation.geolocation.model.Coordinate;
 import com.bolo422.geolocation.geolocation.model.PolygonResponseWrapper;
+import com.bolo422.geolocation.geolocation.model.SavePolygonRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -16,9 +17,9 @@ public class GeolocationRestController {
     private final GeolocationService geolocationService;
 
     @PostMapping("/saveCoordinates")
-    public ResponseEntity<String> saveCoordinates(@RequestBody List<Coordinate> coordinates) {
+    public ResponseEntity<String> saveCoordinates(@RequestBody SavePolygonRequest savePolygonRequest) {
         try {
-            final var message = geolocationService.savePolygon(coordinates);
+            final var message = geolocationService.savePolygon(savePolygonRequest);
             log.info(message);
             return ResponseEntity.ok(message);
         } catch (IllegalArgumentException e) {

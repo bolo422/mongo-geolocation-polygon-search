@@ -29,13 +29,22 @@
         #header button:hover {
             background: #45a049;
         }
+
+        #polygon-name {
+            margin-right: 10px;
+            padding: 5px;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body>
 <div id="header">
     <button onclick="location.href='/'">Voltar à Página Inicial</button>
     <h1>Cadastrar Polígonos</h1>
-    <button id="submit-btn">Enviar Coordenadas</button>
+    <div>
+        <input id="polygon-name" type="text" placeholder="Nome do Polígono (opcional)" maxlength="50" />
+        <button id="submit-btn">Enviar Coordenadas</button>
+    </div>
 </div>
 <div id="map"></div>
 
@@ -72,10 +81,16 @@
             lng: marker.getLatLng().lng
         }));
 
+        const polygonName = document.getElementById('polygon-name').value.trim();
+        const data = {
+            name: polygonName.length >= 3 ? polygonName : "",
+            coordinates: coordinates
+        };
+
         fetch('/saveCoordinates', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(coordinates)
+            body: JSON.stringify(data)
         })
             .then(response => {
                 if (response.ok) {

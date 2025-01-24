@@ -1,9 +1,11 @@
 package com.bolo422.geolocation.geolocation;
 
+import com.bolo422.geolocation.geolocation.mapper.PolygonEntityMapper;
 import com.bolo422.geolocation.geolocation.mapper.PolygonResponseMapper;
 import com.bolo422.geolocation.geolocation.model.Coordinate;
 import com.bolo422.geolocation.geolocation.model.PolygonEntity;
 import com.bolo422.geolocation.geolocation.model.PolygonResponseWrapper;
+import com.bolo422.geolocation.geolocation.model.SavePolygonRequest;
 import com.bolo422.geolocation.geolocation.utils.CoordinateUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.geo.Point;
@@ -19,11 +21,12 @@ public class GeolocationService {
     /**
      * Salva um polígono no banco de dados
      *
-     * @param coordinates lista de coordenadas do polígono
+     * @param savePolygonRequest request com o nome e as coordenadas do polígono
      * @return mensagem de sucesso
      */
-    public String savePolygon(List<Coordinate> coordinates) {
+    public String savePolygon(SavePolygonRequest savePolygonRequest) {
         // as docs do Mongo pedem que a último coordenada seja igual a primeira para fechar o polígono
+        final var coordinates = savePolygonRequest.coordinates();
         if (!coordinates.getFirst().equals(coordinates.getLast())) {
             coordinates.add(coordinates.getFirst());
         }
@@ -36,7 +39,7 @@ public class GeolocationService {
         // Este comportamento é só para testes
         final var storeCoordinates = CoordinateUtils.calculateCenter(coordinates);
 
-        final var polygonEntity = new PolygonEntity(polygonCoordinates, storeCoordinates);
+        final var polygonEntity = PolygonEntityMapper.mapPolygon(polygonCoordinates, storeCoordinates, savePolygonRequest.name());
 
         polygonRepository.save(polygonEntity);
 
