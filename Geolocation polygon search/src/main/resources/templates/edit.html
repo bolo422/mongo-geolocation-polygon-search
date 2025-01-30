@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <title>Editar Polígonos</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.pm/dist/leaflet.pm.css"/>
+  <style>
+    #map {
+      height: 90vh;
+      width: 100%;
+    }
+    #header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: #f4f4f4;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    #header button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+    }
+    #header button:hover {
+      background: #45a049;
+    }
+    #delete-button {
+      background: #f44336;
+    }
+    #delete-button:hover {
+      background: #e53935;
+    }
+  </style>
+</head>
+<body>
+<div id="header">
+  <button onclick="location.href='/'">Voltar à Página Inicial</button>
+  <h1>Editar Polígonos</h1>
+  <button onclick="savePolygon()">Salvar Alterações</button>
+  <button id="delete-button" onclick="deletePolygon()">Excluir Polígono</button>
+</div>
+<div id="map"></div>
+<div id="response-message" style="padding: 10px; margin-top: 10px; background: #f4f4f4;"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.pm/dist/leaflet.pm.min.js"></script>
+<script>
+  let map;
+  let drawnPolygons = {};
+  let drawnStoreMakers = [];
+  let selectedPolygon = null;
+  const drawnStores = [];
+
+  const storeIcon = L.icon({
+    iconUrl: '/images/store-marker.png',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
+  });
+
+  function initMap() {
+    map = L.map('map').setView([-30.110682, -51.131744], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    fetchPolygons();
+  }
+
+  function fetchPolygons() {
+    fetch('/findAll', {method: 'GET'})
+            .then(response => response.json())
+            .then(data => {
+              displayMessage("Polígonos carregados com sucesso.");
+              drawPolygons(data.polygons);
+            })
+            .catch(error => {
+              console.error('Erro ao carregar polígonos:', error);
+              displayMessage("Erro ao carregar os dados.");
+            });
+  }
+
+  function drawPolygons(polygons) {
+    polygons.forEach(polygon => {
+      const latlngs = polygon.coordinates.map(coord => [coord.lat, coord.lng]);
+      const polygonColor = getRandomColor();
+
+      const poly = L.polygon(latlngs, {color: polygonColor}).addTo(map);
+      poly.bindPopup(`<b>${polygon.name}</b>`);
+      poly.on('click', () => enableEditing(poly, polygon.name));
+
+      drawnPolygons[polygon.name] = poly;
+
+      const { lat, lng } = polygon.storeCoordinates;
+
+      const storeAlreadyDrawn = drawnStores.some(store => store.lat === lat && store.lng === lng);
+      if (storeAlreadyDrawn) {
+        return;
+      }
+
+      const storeMarker = L.marker([lat, lng], { icon: storeIcon })
+              .addTo(map)
+              .bindPopup(`<b>${polygon.storeName}</b>`);
+
+      drawnStoreMakers.push(storeMarker);
+      drawnStores.push({ lat, lng });
+    });
+  }
+
+  function enableEditing(poly, name) {
+    if (selectedPolygon) {
+      selectedPolygon.pm.disable();
+    }
+    selectedPolygon = poly;
+    selectedPolygon.pm.enable();
+    selectedPolygon.polygonName = name;
+    document.getElementById('delete-button').style.display = 'inline';  // Show delete button when a polygon is selected
+  }
+
+  function savePolygon() {
+    if (!selectedPolygon) {
+      displayMessage("Nenhum polígono selecionado para edição.");
+      return;
+    }
+
+    const newCoords = selectedPolygon.getLatLngs()[0].map(latlng => ({
+      lat: latlng.lat,
+      lng: latlng.lng
+    }));
+
+    fetch('/editPolygon', {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name: selectedPolygon.polygonName,
+        coordinates: newCoords
+      })
+    })
+            .then(response => response.json())
+            .then(data => displayMessage("Polígono atualizado com sucesso!"))
+            .catch(error => {
+              console.error('Erro ao salvar:', error);
+              displayMessage("Erro ao salvar as alterações.");
+            });
+  }
+
+  function deletePolygon() {
+    if (!selectedPolygon) {
+      displayMessage("Nenhum polígono selecionado para exclusão.");
+      return;
+    }
+
+    fetch('/editPolygon', {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name: selectedPolygon.polygonName,
+        coordinates: []  // Send empty coordinates to signal deletion
+      })
+    })
+            .then(response => response.json())
+            .then(data => {
+              displayMessage("Polígono excluído com sucesso!");
+              map.removeLayer(selectedPolygon);  // Remove polygon from the map
+              selectedPolygon = null;  // Reset selected polygon
+              document.getElementById('delete-button').style.display = 'none';  // Hide delete button
+            })
+            .catch(error => {
+              console.error('Erro ao excluir:', error);
+              displayMessage("Erro ao excluir o polígono.");
+            });
+  }
+
+  function getRandomColor() {
+    let r, g, b;
+    do {
+      r = Math.floor(Math.random() * 256);
+      g = Math.floor(Math.random() * 256);
+      b = Math.floor(Math.random() * 256);
+    } while ((r + g + b) / 3 > 200);
+    return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
+  }
+
+  function displayMessage(message) {
+    document.getElementById('response-message').textContent = message;
+  }
+
+  window.onload = initMap;
+</script>
+</body>
+</html>

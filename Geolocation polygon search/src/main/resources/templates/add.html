@@ -3,6 +3,7 @@
 <head>
     <title>Cadastrar Polígonos</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.pm/dist/leaflet.pm.css"/>
     <style>
         #map {
             height: 90vh;
@@ -18,6 +19,17 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
+        #header div {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #header input, #header select {
+            padding: 5px;
+            font-size: 1rem;
+        }
+
         #header button {
             background: #4CAF50;
             color: white;
@@ -29,12 +41,6 @@
         #header button:hover {
             background: #45a049;
         }
-
-        #polygon-name {
-            margin-right: 10px;
-            padding: 5px;
-            font-size: 1rem;
-        }
     </style>
 </head>
 <body>
@@ -43,14 +49,20 @@
     <h1>Cadastrar Polígonos</h1>
     <div>
         <input id="polygon-name" type="text" placeholder="Nome do Polígono (opcional)" maxlength="50" />
+        <input id="store-code" type="number" placeholder="Código da Loja" min="0" />
+        <select id="delivery-type">
+            <option value="">Carregando tipos de entrega...</option>
+        </select>
         <button id="submit-btn">Enviar Coordenadas</button>
     </div>
 </div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.pm/dist/leaflet.pm.min.js"></script>
 <script>
-    let map, markers = [], polyline, storeMarkers = [];
+    let map, drawnPolygons = [];
+    const storesEntities = [];
 
     function initMap() {
         map = L.map('map').setView([-30.110682, -51.131744], 12);
@@ -59,31 +71,60 @@
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        map.on('click', (event) => addMarker(event.latlng));
+        var options = {
+            position: 'topleft',
+            drawPolygon: true,
+            drawCircle: false,
+            drawMarker: false,
+            drawCircleMarker: false,
+            editMode: true,
+            dragMode: true,
+            cutPolygon: true,
+            removalMode: true
+        };
 
-        polyline = L.polyline([], {color: 'red'}).addTo(map);
+        map.pm.addControls(options);
+
+        map.on('pm:create', (e) => {
+            drawnPolygons.push(e.layer);
+        });
 
         document.getElementById('submit-btn').addEventListener('click', sendCoordinates);
-
-        // Fetch and display stores on map
+        fetchDeliveryTypes();
         fetchAndDisplayStores();
     }
 
-    function addMarker(location) {
-        const marker = L.marker(location).addTo(map);
-        markers.push(marker);
-        polyline.setLatLngs(markers.map(m => m.getLatLng()));
-    }
-
     function sendCoordinates() {
-        const coordinates = markers.map(marker => ({
-            lat: marker.getLatLng().lat,
-            lng: marker.getLatLng().lng
-        }));
+        if (drawnPolygons.length === 0) {
+            alert("Desenhe um polígono antes de enviar!");
+            return;
+        }
 
+        const coordinates = drawnPolygons.map(polygon => polygon.getLatLngs()[0].map(latlng => ({ lat: latlng.lat, lng: latlng.lng })));
         const polygonName = document.getElementById('polygon-name').value.trim();
+        const storeCode = document.getElementById('store-code').value.trim();
+        const deliveryType = document.getElementById('delivery-type').value;
+
+        if (!storeCode) {
+            alert('Digite o código da loja!');
+            return;
+        }
+
+        if (!deliveryType) {
+            alert('Selecione um tipo de entrega!');
+            return;
+        }
+
+        // valdiate store code
+        if (!storesEntities.includes(parseInt(storeCode))) {
+            alert('Código de loja inválido!');
+            return;
+        }
+
         const data = {
-            name: polygonName.length >= 3 ? polygonName : "",
+            name: polygonName || '',
+            storeCode: parseInt(storeCode),
+            deliveryType: deliveryType,
             coordinates: coordinates
         };
 
@@ -104,40 +145,55 @@
     }
 
     function clearMap() {
-        markers.forEach(marker => map.removeLayer(marker));
-        markers = [];
-        polyline.setLatLngs([]);
+        drawnPolygons.forEach(polygon => map.removeLayer(polygon));
+        drawnPolygons = [];
     }
 
-    // Fetch and display stores
-    function fetchAndDisplayStores() {
-        fetch('/store/allStores', {
-            method: 'GET'
-        })
+    function fetchDeliveryTypes() {
+        fetch('/deliveryTypes', { method: 'GET' })
             .then(response => response.json())
+            .then(types => {
+                const select = document.getElementById('delivery-type');
+                select.innerHTML = '<option value="">Selecione um tipo de entrega</option>';
+                types.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = type;
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Erro ao carregar tipos de entrega:', error);
+                document.getElementById('delivery-type').innerHTML = '<option value="">Erro ao carregar</option>';
+            });
+    }
+
+    function fetchAndDisplayStores() {
+        fetch('/store/allStores', { method: 'GET' })
+            .then(response => response.json())
+            .then(stores => {
+                stores.forEach(store => storesEntities.push(store.code));
+                return stores;
+            })
             .then(stores => drawStores(stores))
             .catch(error => console.error('Erro ao carregar lojas:', error));
     }
 
-    // Draw stores on the map
     function drawStores(stores) {
-        // Define the custom icon
         const storeIcon = L.icon({
-            iconUrl: '/images/store-marker.png', // Replace with your image path
-            iconSize: [32, 32], // Size of the icon [width, height]
-            iconAnchor: [16, 32], // Point of the icon which corresponds to the marker's location [x, y]
-            popupAnchor: [0, -32] // Point from which the popup should open relative to the iconAnchor
+            iconUrl: '/images/store-marker.png',
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32]
         });
 
         stores.forEach(store => {
             const lat = store.geometry.coordinates[1];
             const lng = store.geometry.coordinates[0];
 
-            const marker = L.marker([lat, lng], {icon: storeIcon}) // Assign the custom icon here
+            L.marker([lat, lng], {icon: storeIcon})
                 .addTo(map)
-                .bindPopup(`<b>${store.friendlyName}</b>`);
-
-            storeMarkers.push(marker);
+                .bindPopup(`<b>${store.code} - ${store.friendlyName}</b>`);
         });
     }
 

@@ -83,6 +83,8 @@
             });
     }
 
+    const drawnStores = [];
+
     function drawPolygonsAndStores(polygons, clickedLocation) {
         polygons.forEach(polygon => {
             const latlngs = polygon.coordinates.map(coord => [coord.lat, coord.lng]);
@@ -94,11 +96,18 @@
 
             if (polygon.storeCoordinates) {
                 const { lat, lng } = polygon.storeCoordinates;
+
+                const storeAlreadyDrawn = drawnStores.some(store => store.lat === lat && store.lng === lng);
+                if (storeAlreadyDrawn) {
+                    return;
+                }
+
                 const storeMarker = L.marker([lat, lng], { icon: storeIcon })
                     .addTo(map)
-                    .bindPopup(`<b>Loja do Polígono: ${polygon.name}</b>`);
+                    .bindPopup(`<b>${polygon.storeName}</b>`);
 
                 storeMarkers.push(storeMarker);
+                drawnStores.push({ lat, lng });
 
                 // Draw line and add distance
                 const distance = polygon.distance; // Use the distance from the response
@@ -136,6 +145,9 @@
         // Remove all markers
         storeMarkers.forEach(marker => map.removeLayer(marker));
         storeMarkers = [];
+
+        // Remove all drawn stores
+        drawnStores.length = 0;
 
         // Remove all distance lines
         distanceLines.forEach(line => map.removeLayer(line));

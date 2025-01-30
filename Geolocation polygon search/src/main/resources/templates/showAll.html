@@ -29,12 +29,20 @@
         #header button:hover {
             background: #45a049;
         }
+
+        #header select {
+            padding: 5px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
 <div id="header">
     <button onclick="location.href='/'">Voltar à Página Inicial</button>
     <h1>Polígonos Cadastrados</h1>
+    <select id="delivery-type-filter">
+        <option value="">Selecione o Tipo de Entrega</option>
+    </select>
 </div>
 <div id="map"></div>
 <div id="response-message"
@@ -45,6 +53,8 @@
     let map;
     let drawnPolygons = [];
     const storeMarkers = [];
+    const deliveryTypes = [];
+    let allPolygons = []; // Store all polygons to filter later
 
     // Define the custom icon for stores
     const storeIcon = L.icon({
@@ -63,6 +73,43 @@
         }).addTo(map);
 
         fetchPolygons();
+        fetchDeliveryTypes();
+    }
+
+    // Fetch delivery types
+    function fetchDeliveryTypes() {
+        fetch('http://localhost:8080/deliveryTypes', { method: 'GET' })
+            .then(response => response.json())
+            .then(data => {
+                deliveryTypes.push(...data); // Save delivery types
+                populateDeliveryTypeDropdown();
+            })
+            .catch(error => {
+                console.error('Erro ao carregar tipos de entrega:', error);
+                displayMessage("Erro ao carregar os tipos de entrega.");
+            });
+    }
+
+    // Populate the dropdown with delivery types
+    function populateDeliveryTypeDropdown() {
+        const dropdown = document.getElementById('delivery-type-filter');
+        deliveryTypes.forEach(type => {
+            const option = document.createElement('option');
+            option.value = type;
+            option.textContent = type;
+            dropdown.appendChild(option);
+        });
+        // create a default option called "TODOS"
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'TODOS';
+        dropdown.appendChild(option);
+
+        // Listen for changes in the dropdown
+        dropdown.addEventListener('change', (e) => {
+            const selectedType = e.target.value;
+            filterPolygons(selectedType);
+        });
     }
 
     // Fetch polygons and stores
@@ -71,7 +118,8 @@
             .then(response => response.json())
             .then(data => {
                 displayMessage("Polígonos e lojas carregados com sucesso.");
-                drawPolygonsAndStores(data.polygons);
+                allPolygons = data.polygons; // Store all polygons
+                drawPolygonsAndStores(allPolygons);
             })
             .catch(error => {
                 console.error('Erro ao carregar polígonos e lojas:', error);
@@ -79,7 +127,8 @@
             });
     }
 
-    // Draw polygons and their associated stores
+    const drawnStores = [];
+
     function drawPolygonsAndStores(polygons) {
         polygons.forEach(polygon => {
             // Draw polygon
@@ -94,20 +143,42 @@
 
             // Draw store marker
             if (polygon.storeCoordinates) {
+                const { lat, lng } = polygon.storeCoordinates;
+
+                // Check if store is already drawn
+                const storeAlreadyDrawn = drawnStores.some(store => store.lat === lat && store.lng === lng);
+                if (storeAlreadyDrawn) {
+                    return;
+                }
+
                 console.log(polygon.storeCoordinates);
-                const lat = polygon.storeCoordinates.lat;
-                const lng = polygon.storeCoordinates.lng;
 
                 const storeMarker = L.marker([lat, lng], {icon: storeIcon})
                     .addTo(map)
-                    .bindPopup(`<b>Loja do Polígono: ${polygon.name}</b>`);
+                    .bindPopup(`<b>${polygon.storeName}</b>`);
 
                 storeMarkers.push(storeMarker);
-            }
-            else {
+                drawnStores.push({ lat, lng }); // Store coordinates persist across function calls
+            } else {
                 console.log('No store coordinates found for polygon:', polygon.name);
             }
         });
+    }
+
+    // Filter polygons based on the selected delivery type
+    function filterPolygons(deliveryType) {
+        // Remove all existing polygons and markers
+        drawnPolygons.forEach(poly => poly.remove());
+        storeMarkers.forEach(marker => marker.remove());
+        drawnStores.length = 0; // Clear the drawn stores array
+
+        // Filter polygons by the selected delivery type
+        const filteredPolygons = deliveryType ?
+            allPolygons.filter(polygon => polygon.deliveryType === deliveryType) :
+            allPolygons;
+
+        // Redraw the filtered polygons
+        drawPolygonsAndStores(filteredPolygons);
     }
 
     // Generate a random color
