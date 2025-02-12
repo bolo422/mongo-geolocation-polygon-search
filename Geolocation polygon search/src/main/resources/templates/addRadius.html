@@ -59,16 +59,6 @@
   let map;
   const storesEntities = [];
 
-  function initMap() {
-      map = L.map('map').setView([-30.110682, -51.131744], 12);
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      }).addTo(map);
-
-      fetchAndDisplayStores();
-  }
-
   function fetchAndDisplayStores() {
       fetch('http://localhost:8080/store/allStores')
           .then(response => response.json())
@@ -116,34 +106,61 @@
     }
 
   document.getElementById('submit-btn').addEventListener('click', () => {
-      const storeCode = document.getElementById('store-code').value.trim();
-      const deliveryRadius = document.getElementById('delivery-radius').value.trim();
+    const storeCode = document.getElementById('store-code').value.trim();
+    const deliveryRadius = document.getElementById('delivery-radius').value.trim();
 
-      if (!storeCode || !deliveryRadius) {
-          alert('Preencha todos os campos!');
-          return;
-      }
+    if (!storeCode || !deliveryRadius) {
+        alert('Preencha todos os campos!');
+        return;
+    }
 
-      const data = {
-          storeCode: parseInt(storeCode),
-          deliveryRadius: parseFloat(deliveryRadius)
-      };
+    const data = {
+        storeCode: parseInt(storeCode),
+        deliveryRadius: parseFloat(deliveryRadius)
+    };
 
-      fetch('/saveDeliveryRadius', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(data)
-      })
-      .then(response => {
-          if (response.ok) {
-              alert('Raio de entrega salvo com sucesso!');
-              location.reload();
-          } else {
-              alert('Falha ao salvar raio de entrega.');
-          }
-      })
-      .catch(error => console.error('Erro:', error));
-  });
+    fetch('/saveDeliveryRadius', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (response.ok) {
+            // Salva estado atual do mapa antes de recarregar
+            localStorage.setItem('mapState', JSON.stringify({
+                center: map.getCenter(),
+                zoom: map.getZoom()
+            }));
+
+            alert('Raio de entrega salvo com sucesso!');
+            location.reload();
+        } else {
+            alert('Falha ao salvar raio de entrega.');
+        }
+    })
+    .catch(error => console.error('Erro:', error));
+});
+
+function initMap() {
+    let initialCenter = [-30.110682, -51.131744];
+    let initialZoom = 12;
+
+    // Recupera estado anterior do mapa se existir
+    const savedState = localStorage.getItem('mapState');
+    if (savedState) {
+        const state = JSON.parse(savedState);
+        initialCenter = [state.center.lat, state.center.lng];
+        initialZoom = state.zoom;
+    }
+
+    map = L.map('map').setView(initialCenter, initialZoom);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    fetchAndDisplayStores();
+}
 
   window.onload = initMap;
 </script>
