@@ -29,4 +29,9 @@ public class ViewController {
         return "edit";
     }
 
+    @GetMapping("/addRadius")
+    public String addRadius() {
+        return "addRadius";
+    }
+
 }

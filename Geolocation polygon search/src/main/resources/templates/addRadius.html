@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <title>Gerenciar Raio de Entrega</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    #map {
+        height: 90vh;
+        width: 100%;
+    }
+
+    #header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        background: #f4f4f4;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #header div {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #header input, #header button {
+        padding: 5px;
+        font-size: 1rem;
+    }
+
+    #header button {
+        background: #4CAF50;
+        color: white;
+        border: none;
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    #header button:hover {
+        background: #45a049;
+    }
+  </style>
+</head>
+<body>
+<div id="header">
+  <button onclick="location.href='/'">Voltar à Página Inicial</button>
+  <h1>Gerenciar Raio de Entrega</h1>
+  <div>
+    <input id="store-code" type="number" placeholder="Código da Loja" min="0" />
+    <input id="delivery-radius" type="number" placeholder="Raio de Entrega (m)" min="1" />
+    <button id="submit-btn">Salvar Raio</button>
+  </div>
+</div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  let map;
+  const storesEntities = [];
+
+  function initMap() {
+      map = L.map('map').setView([-30.110682, -51.131744], 12);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      fetchAndDisplayStores();
+  }
+
+  function fetchAndDisplayStores() {
+      fetch('http://localhost:8080/store/allStores')
+          .then(response => response.json())
+          .then(stores => {
+              stores.forEach(store => {
+                  if (store.deliveryRadius && store.deliveryRadius > 0) {
+                      const lat = store.geometry.coordinates[1];
+                      const lng = store.geometry.coordinates[0];
+                      L.circle([lat, lng], {
+                          radius: store.deliveryRadius,
+                          color: 'blue',
+                          fillColor: '#99ccff',
+                          fillOpacity: 0.5
+                      }).addTo(map)
+                        .bindPopup(`<b>${store.code} - ${store.friendlyName}</b><br>Raio: ${store.deliveryRadius}m`);
+                  }
+              });
+              return stores;
+          }
+        )
+        .then(stores => {
+                stores.forEach(store => storesEntities.push(store.code));
+                return stores;
+            })
+            .then(stores => drawStores(stores))
+          .catch(error => console.error('Erro ao carregar lojas:', error));
+  }
+
+  function drawStores(stores) {
+        const storeIcon = L.icon({
+            iconUrl: '/images/store-marker.png',
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32]
+        });
+
+        stores.forEach(store => {
+            const lat = store.geometry.coordinates[1];
+            const lng = store.geometry.coordinates[0];
+
+            L.marker([lat, lng], {icon: storeIcon})
+                .addTo(map)
+                .bindPopup(`<b>${store.code} - ${store.friendlyName}</b>`);
+        });
+    }
+
+  document.getElementById('submit-btn').addEventListener('click', () => {
+      const storeCode = document.getElementById('store-code').value.trim();
+      const deliveryRadius = document.getElementById('delivery-radius').value.trim();
+
+      if (!storeCode || !deliveryRadius) {
+          alert('Preencha todos os campos!');
+          return;
+      }
+
+      const data = {
+          storeCode: parseInt(storeCode),
+          deliveryRadius: parseFloat(deliveryRadius)
+      };
+
+      fetch('/saveDeliveryRadius', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(data)
+      })
+      .then(response => {
+          if (response.ok) {
+              alert('Raio de entrega salvo com sucesso!');
+              location.reload();
+          } else {
+              alert('Falha ao salvar raio de entrega.');
+          }
+      })
+      .catch(error => console.error('Erro:', error));
+  });
+
+  window.onload = initMap;
+</script>
+</body>
+</html>

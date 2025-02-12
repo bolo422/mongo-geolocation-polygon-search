@@ -43,7 +43,22 @@ public class StoreService {
     }
 
     public List<StoreEntity> getAllStores() {
-        return storeRepository.findAll();
+        return storeRepository.findAll()
+                // sort by deliveryRadius. Nulls last
+                .stream()
+                .sorted((s1, s2) -> {
+                    if (s1.deliveryRadius() == null && s2.deliveryRadius() == null) {
+                        return 0;
+                    }
+                    if (s1.deliveryRadius() == null) {
+                        return 1;
+                    }
+                    if (s2.deliveryRadius() == null) {
+                        return -1;
+                    }
+                    return s2.deliveryRadius().compareTo(s1.deliveryRadius());
+                })
+                .toList();
     }
 
     public StoreEntity findStoreByCodeOrDefault(Long code) {
@@ -64,5 +79,31 @@ public class StoreService {
         final var store = storeRepository.findByCode(code);
         log.info("Found store: {}", store);
         return store;
+    }
+
+    public void updateStore(StoreEntity updatedStore) {
+        log.info("Updating store: {}", updatedStore);
+        storeRepository.save(updatedStore);
+    }
+
+    public void removeStoresDuplicates() {
+        // get all stores
+        // group by code
+        // remove one from all groups
+        // take the remaining results
+        // delete them
+        final var stores = storeRepository.findAll();
+        final var storeGroups = stores.stream()
+                .collect(Collectors.groupingBy(StoreEntity::code));
+        storeGroups.values().stream()
+                .filter(storeEntities -> storeEntities.size() > 1)
+                .map(storeEntities -> storeEntities.subList(1, storeEntities.size()))
+                .flatMap(List::stream)
+                .forEach(this::deleteStore);
+    }
+
+    public void deleteStore(StoreEntity storeEntity) {
+        log.info("Deleting store: {}", storeEntity);
+        storeRepository.delete(storeEntity);
     }
 }

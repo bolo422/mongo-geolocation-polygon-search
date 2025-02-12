@@ -1,6 +1,7 @@
 package com.bolo422.geolocation.geolocation.controller;
 
 import com.bolo422.geolocation.geolocation.model.request.EditPolygonRequest;
+import com.bolo422.geolocation.geolocation.model.request.SaveDeliveryRadiusRequest;
 import com.bolo422.geolocation.geolocation.model.request.SavePolygonRequest;
 import com.bolo422.geolocation.geolocation.model.response.PolygonResponseWrapper;
 import com.bolo422.geolocation.geolocation.service.GeolocationService;
@@ -52,6 +53,17 @@ public class GeolocationRestController {
     public ResponseEntity<String> editPolygon(@RequestBody EditPolygonRequest request) {
         try {
             final var message = geolocationService.editPolygon(request);
+            log.info(message);
+            return ResponseEntity.ok(message);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/saveDeliveryRadius")
+    public ResponseEntity<String> saveDeliveryRadius(@RequestBody SaveDeliveryRadiusRequest saveDeliveryRadiusRequest) {
+        try {
+            final var message = geolocationService.saveDeliveryRadius(saveDeliveryRadiusRequest);
             log.info(message);
             return ResponseEntity.ok(message);
         } catch (IllegalArgumentException e) {

@@ -5,6 +5,7 @@ import com.bolo422.geolocation.geolocation.model.Subsidiary;
 import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public interface StoreEntityMapper {
     static Collection<StoreEntity> mapFrom(Collection<Subsidiary> subsidiaries) {
@@ -18,6 +19,7 @@ public interface StoreEntityMapper {
                 .code(subsidiary.code())
                 .friendlyName(subsidiary.friendlyName())
                 .geometry(mapCoordinate(subsidiary.address()))
+                .deliveryRadius(Optional.ofNullable(subsidiary.deliveryRadius()).orElse(0.0))
                 .build();
     }
 

@@ -7,6 +7,7 @@ import com.bolo422.geolocation.geolocation.model.Coordinate;
 import com.bolo422.geolocation.geolocation.model.entity.PolygonEntity;
 import com.bolo422.geolocation.geolocation.model.entity.StoreEntity;
 import com.bolo422.geolocation.geolocation.model.request.EditPolygonRequest;
+import com.bolo422.geolocation.geolocation.model.request.SaveDeliveryRadiusRequest;
 import com.bolo422.geolocation.geolocation.model.request.SavePolygonRequest;
 import com.bolo422.geolocation.geolocation.model.response.PolygonResponseWrapper;
 import com.bolo422.geolocation.geolocation.repository.PolygonRepository;
@@ -134,6 +135,23 @@ public class GeolocationService {
         polygonRepository.save(editedPolygon);
 
         return "Polígono editado com sucesso!";
+    }
+
+    public String saveDeliveryRadius(SaveDeliveryRadiusRequest saveDeliveryRadiusRequest) {
+        final var store = storeService.findStoreByCode(saveDeliveryRadiusRequest.storeCode());
+
+        if(store == null) {
+            log.error("Loja não encontrada");
+            throw new IllegalArgumentException("Loja não encontrada");
+        }
+
+        final var updatedStore = store.toBuilder()
+                .deliveryRadius(saveDeliveryRadiusRequest.deliveryRadius())
+                .build();
+
+        storeService.updateStore(updatedStore);
+
+        return "Raio de entrega salvo com sucesso!";
     }
 
     // DISABLED
