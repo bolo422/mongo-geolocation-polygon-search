@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.core.index.GeoSpatialIndexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Builder(toBuilder = true)
-@Document(collection = "stores")
+@Document(collection = "pocGeolocationStores")
 public record StoreEntity(
         @Id
         String id,

@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.core.index.GeoSpatialIndexType;
 import org.springframework.data.mongodb.core.index.GeoSpatialIndexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document(collection = "polygons")
+@Document(collection = "pocGeolocationPolygons")
 @Builder(toBuilder = true)
 public record PolygonEntity(
         @Id

@@ -59,7 +59,7 @@ public interface PolygonResponseMapper {
     }
 
     static double calculateDistance(GeoJsonPoint point, Coordinate coordinate) {
-        if(coordinate == null) return 0;
+        if (coordinate == null) return 0;
 
         final var lat = coordinate.lat();
         final var lng = coordinate.lng();
@@ -72,7 +72,7 @@ public interface PolygonResponseMapper {
         return new Coordinate(point.getY(), point.getX());
     }
 
-    private static List<Coordinate> mapCoordinates(PolygonEntity polygonEntity) {
+    public static List<Coordinate> mapCoordinates(PolygonEntity polygonEntity) {
         return polygonEntity.geometry().getCoordinates().getFirst().getCoordinates().stream()
                 .map(point -> new Coordinate(point.getY(), point.getX()))
                 .toList();

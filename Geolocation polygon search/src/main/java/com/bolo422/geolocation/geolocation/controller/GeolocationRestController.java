@@ -43,8 +43,26 @@ public class GeolocationRestController {
         return ResponseEntity.ok(polygons);
     }
 
+    @GetMapping("/findAllAsRequests")
+    public ResponseEntity<List<SavePolygonRequest>> findAllAsRequests() {
+        final var polygons = geolocationService.findAllAsRequests();
+        log.info("Polígonos encontrados: {}", polygons);
+        return ResponseEntity.ok(polygons);
+    }
+
+    @PostMapping("/saveMultipleRequests")
+    public ResponseEntity<String> saveMultipleRequests(@RequestBody List<SavePolygonRequest> polygons) {
+        try {
+            final var message = geolocationService.saveMultipleRequests(polygons);
+            log.info(message);
+            return ResponseEntity.ok(message);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @GetMapping("/deliveryTypes")
-    public ResponseEntity<List<String>> getDeliveryTypes(){
+    public ResponseEntity<List<String>> getDeliveryTypes() {
         log.info("Tipos de entrega encontrados: {}", geolocationService.getDeliveryTypes());
         return ResponseEntity.ok(geolocationService.getDeliveryTypes());
     }

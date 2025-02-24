@@ -3,6 +3,7 @@ package com.bolo422.geolocation.geolocation.service;
 import com.bolo422.geolocation.geolocation.enus.DeliveryTypeEnum;
 import com.bolo422.geolocation.geolocation.mapper.PolygonEntityMapper;
 import com.bolo422.geolocation.geolocation.mapper.PolygonResponseMapper;
+import com.bolo422.geolocation.geolocation.mapper.SavePolygonRequestMapper;
 import com.bolo422.geolocation.geolocation.model.Coordinate;
 import com.bolo422.geolocation.geolocation.model.entity.PolygonEntity;
 import com.bolo422.geolocation.geolocation.model.entity.StoreEntity;
@@ -102,7 +103,7 @@ public class GeolocationService {
     }
 
     public List<String> getDeliveryTypes() {
-        return  Stream.of(DeliveryTypeEnum.values())
+        return Stream.of(DeliveryTypeEnum.values())
                 .map(Enum::name)
                 .toList();
     }
@@ -140,7 +141,7 @@ public class GeolocationService {
     public String saveDeliveryRadius(SaveDeliveryRadiusRequest saveDeliveryRadiusRequest) {
         final var store = storeService.findStoreByCode(saveDeliveryRadiusRequest.storeCode());
 
-        if(store == null) {
+        if (store == null) {
             log.error("Loja não encontrada");
             throw new IllegalArgumentException("Loja não encontrada");
         }
@@ -152,6 +153,24 @@ public class GeolocationService {
         storeService.updateStore(updatedStore);
 
         return "Raio de entrega salvo com sucesso!";
+    }
+
+    public String saveRaw(List<PolygonEntity> polygons) {
+        polygonRepository.saveAll(polygons);
+        return "Polígonos salvos com sucesso!";
+    }
+
+    public List<SavePolygonRequest> findAllAsRequests() {
+        return polygonRepository.findAll().stream()
+                .map(SavePolygonRequestMapper::fromEntity)
+                .toList();
+    }
+
+    public String saveMultipleRequests(List<SavePolygonRequest> polygons) {
+        for (SavePolygonRequest polygon : polygons) {
+            savePolygon(polygon);
+        }
+        return "Polígonos salvos com sucesso!";
     }
 
     // DISABLED
